@@ -1,2 +1,2 @@
 # 9Hacks
-T3NHACKs' repository for 9hacks
+T3NTHACKs' repository for 9hacks
