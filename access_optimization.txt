@@ -82,3 +82,93 @@ iptables -A FORWARD_IN -m ttl –ttl-gt 10 -j ACCEPT
 iptables -A FORWARD_IN -m limit –limit 1/s -j LOG –log-prefix “[IPTABLES: FORWARD_IN]”
 iptables -A FORWARD_IN -j DROP
 
+
+# LAN_IN #
+
+# Allow DHCP broadcasts from the inside
+iptables -A LAN_IN -i $LAN -p udp –sport 67:68 –dport 67:68 -j ACCEPT
+
+# Allow DNS queries from the LAN to the Raspberry Security Syste,
+iptables -A LAN_IN -i $LAN -p udp –sport $UNPRIV_PORTS –dport 53 -j ACCEPT
+iptables -A LAN_IN -i $LAN -p tcp –sport $UNPRIV_PORTS –dport 53 -j ACCEPT
+
+# SSH connections
+
+iptables -A LAN_IN -i $LAN -p tcp –sport $UNPRIV_PORTS –dport $SSH -j ACCEPT
+
+# ICMP LAN (Type 3 = unreachable [destination|port|protocol])
+iptables -A LAN_IN -p icmp -m icmp –icmp-type echo-request -j ACCEPT
+iptables -A LAN_IN -p icmp -m icmp –icmp-type 3 -j ACCEPT
+
+# Block & Log everything else
+iptables -A LAN_IN -m limit –limit 1/s -j LOG –log-prefix “[IPTABLES: LAN_IN]”
+iptables -A LAN_IN -j DROP
+
+# LAN_BROADCAST #
+
+# Allow DHCP broadcasts from the inside
+iptables -A LAN_BROADCAST -i $LAN -p udp –sport 67:68 –dport 67:68 -j ACCEPT
+# Block everything else (do not bother to log broadcast traffic)
+iptables -A LAN_BROADCAST -j DROP
+# INTERNET_GATEWAY #
+# Allow already established connections from RSS to Internet to come back to RSS
+iptables -A INTERNET_GATEWAY -p all -j ACCEPT
+
+# CHAINE GATEWAY_LAN #
+# Block potential ICMP redirect sent from us (could be caused by a misconfigured sysctl)
+iptables -A GATEWAY_LAN -p icmp -m icmp –icmp-type redirect -m limit –limit 1/s -j LOG –log-prefix \
+“[IPTABLES: ICMP REDIRECT]”
+
+iptables -A GATEWAY_LAN -p icmp -m icmp –icmp-type redirect -j DROP
+
+# Allow LAN established connections to Raspberry to come back to the LAN
+iptables -A GATEWAY_LAN -p tcp -m state –state ESTABLISHED,RELATED -j ACCEPT
+iptables -A GATEWAY_LAN -p udp -m state –state ESTABLISHED,RELATED -j ACCEPT
+iptables -A GATEWAY_LAN -p icmp -m state –state ESTABLISHED,RELATED -j ACCEPT
+
+# Allow DHCP related traffic
+iptables -A GATEWAY_LAN -p udp –sport 67:68 –dport 67:68 -j ACCEPT
+
+# Allow Raspi to ping the LAN
+iptables -A GATEWAY_LAN -p icmp -m icmp –icmp-type echo-request -m state –state NEW -j ACCEPT
+
+# Block & Log everything else
+iptables -A GATEWAY_LAN -m limit –limit 1/s -j LOG –log-prefix “[IPTABLES: GATEWAY_LAN]”
+iptables -A GATEWAY_LAN -j DROP
+
+# GATEWAY_BROADCAST #
+# Allow broadcast DHCP replies from RSS
+iptables -A GATEWAY_BROADCAST -p udp –sport 67:68 –dport 67:68 -j ACCEPT
+
+# Block & Log everything else
+iptables -A GATEWAY_BROADCAST -m limit –limit 1/s -j LOG –log-prefix “[IPTABLES: GATEWAY_BROADCAST]”
+iptables -A GATEWAY_BROADCAST -j DROP
+
+# GATEWAY_INTERNET #
+# Allow new connections from Raspberry (necessary for updates, installing packages, etc…)
+iptables -A GATEWAY_INTERNET -p tcp -m multiport –dports ftp,http,https -m time –timestart 09:00 –timestop \
+23:00 -j ACCEPT
+
+# Resolutions DNS
+iptables -A GATEWAY_INTERNET -p udp –sport $UNPRIV_PORTS -d $DNS_SERVER1 –dport domain -j ACCEPT
+iptables -A GATEWAY_INTERNET -p udp –sport $UNPRIV_PORTS -d $DNS_SERVER2 –dport domain -j ACCEPT
+iptables -A GATEWAY_INTERNET -p tcp –sport $UNPRIV_PORTS -d $DNS_SERVER1 –dport domain -j ACCEPT
+iptables -A GATEWAY_INTERNET -p tcp –sport $UNPRIV_PORTS -d $DNS_SERVER2 –dport domain -j ACCEPT
+
+# Happens when reloading firewall rules
+iptables -A GATEWAY_INTERNET -p icmp -m icmp –icmp-type port-unreachable -d $DNS_SERVER1 -j DROP
+iptables -A GATEWAY_INTERNET -p icmp -m icmp –icmp-type port-unreachable -d $DNS_SERVER2 -j DROP
+
+# Allow NTP
+iptables -A GATEWAY_INTERNET -p udp –dport ntp -j ACCEPT
+
+# Block & Log everything else
+iptables -A GATEWAY_INTERNET -m limit –limit 1/s -j LOG –log-prefix “[IPTABLES: GATEWAY_INTERNET]”
+iptables -A GATEWAY_INTERNET -j DROP
+
+rules_number=`egrep ‘\-j’ /etc/firewall.advanced | wc -l`
+flows_number=`egrep ‘\-j’ /etc/firewall.flows | wc -l`
+total_rules=$(( rules_number+flows_number ))
+echo “”
+echo “$total_rules rules loaded.”
+echo “”
