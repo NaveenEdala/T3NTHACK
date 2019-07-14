@@ -356,3 +356,44 @@ This script basically does the following :
 – Optimises DNS queries (IP TOS field)
 – Adds randomness to the NAT process
 – Drops inbound packets with low TTL (could mean a ttl expiry attack or a traceroute)
+
+echo “Setting up variables”
+# VARIABLES TO CUSTOMISE TO MATCH YOUR NETWORK
+LAN=”eth0″
+LAN_SUBNET=”192.168.1.0/24″
+DHCP_RANGE=”192.168.1.10-192.168.1.20″
+DNS_SERVER1=”8.8.8.8″
+DNS_SERVER2=”208.67.222.222″
+RSS=”192.168.1.3″
+MODEM_ROUTER=”192.168.1.1″
+UNPRIV_PORTS=”1024:65535″
+SSH=”15507″
+NTP_SERVER=”65.55.21.22″
+
+echo “Flushing existing chains and rules…”
+# FLUSHING CHAINS & RULES
+iptables -t filter -F
+iptables -t filter -X
+iptables -t nat -F
+iptables -t nat -X
+iptables -t mangle -F
+iptables -t mangle -X
+
+echo “Setting up default policies”
+# DEFAULT POLICIES
+iptables -P INPUT DROP
+iptables -P OUTPUT DROP
+iptables -P FORWARD DROP
+
+# LOOPBACK
+iptables -A INPUT -i lo -j ACCEPT
+iptables -A OUTPUT -o lo -j ACCEPT
+
+echo “Creating chains”
+
+# CHAIN TO CHECK, LOG, AND OPTIMISE
+iptables -N CHECK_TCP_FLAGS
+iptables -N LOGDROP_TCP_FLAGS
+iptables -t mangle -N FAST_DNS
+
+echo “Loading rules”
