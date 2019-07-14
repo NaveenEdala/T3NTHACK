@@ -44,12 +44,6 @@ iptables -t nat -A NAT_OUT -j MASQUERADE –random
 # FORWARD OUT #
 
 # Potential Malware traffic
-# If not dropped here, they would have been blocked by the default policy
-# However, we take the opportunity to save them in a “bad_traffic” table
-# This table enables us to block LAN’s hosts trying to access too many malware ports
-# Thus being potentially infected (and requiring an antivirus analysis)
-#
-# As soon as a LAN host has hit 5 times rules below within 2mn, DROP all forward out from that host
 iptables -A FORWARD_OUT -p tcp -m recent –name bad_traffic –rcheck –rttl –hitcount 5 –seconds 120 -j \
 LOGDROP_MALWARE
 
