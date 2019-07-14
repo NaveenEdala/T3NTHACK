@@ -1,4 +1,3 @@
-# Step 1 : variables
 ipvar HOME_NET [192.168.1.0/24]
 ipvar EXTERNAL_NET !$HOME_NET
 ipvar DNS_SERVERS [192.168.1.3]
@@ -25,7 +24,6 @@ var PREPROC_RULE_PATH ../preproc_rules
 var WHITE_LIST_PATH $RULE_PATH
 var BLACK_LIST_PATH $RULE_PATH
 
-# Step #2: Configure the decoder.
 config disable_decode_alerts
 config disable_tcpopt_experimental_alerts
 config disable_tcpopt_obsolete_alerts
@@ -34,21 +32,17 @@ config disable_tcpopt_alerts
 config disable_ipopt_alerts
 config checksum_mode: all
 
-# Step #3: Configure the base detection engine. 
 config pcre_match_limit: 3500
 config pcre_match_limit_recursion: 1500
 
-# “lowmem” is required for Snort to run with low memory
 config detection: search-method lowmem search-optimize max-pattern-len 20
 
 config event_queue: max_queue 8 log 3 order_events content_length
 config paf_max: 16000
 
-# Step #4: Configure dynamic loaded libraries.
 dynamicpreprocessor directory /usr/lib/snort_dynamicpreprocessor/
 dynamicengine /usr/lib/snort_dynamicengine/libsf_engine.so
 
-# Step #5: Configure preprocessors
 preprocessor normalize_ip4
 preprocessor normalize_tcp: ips ecn stream
 preprocessor normalize_icmp4
@@ -57,7 +51,6 @@ preprocessor normalize_icmp6
 preprocessor frag3_global: max_frags 65536
 preprocessor frag3_engine: policy windows detect_anomalies overlap_limit 10 min_fragment_length 100 timeout 180
 
-# Target-Based stateful inspection/stream reassemble.
 preprocessor stream5_global: track_tcp yes, \
 track_udp yes, \
 track_icmp no, \
@@ -74,8 +67,7 @@ ports both 80 81 311 443 465 563 591 593 636 901 989 992 993 994 995 1220 1414 1
 7801 7900 7901 7902 7903 7904 7905 7906 7908 7909 7910 7911 7912 7913 7914 7915 7916 \
 7917 7918 7919 7920 8000 8008 8014 8028 8080 8088 8118 8123 8180 8243 8280 8800 8888 8899 9080 9090 9091 9443 9999 11371 55555
 preprocessor stream5_udp: timeout 180
-
-# HTTP normalization and anomaly detection. 
+ 
 preprocessor http_inspect: global iis_unicode_map unicode.map 1252 compress_depth 65535 decompress_depth 65535
 preprocessor http_inspect_server: server default \
 http_methods { GET POST PUT SEARCH MKCOL COPY MOVE LOCK UNLOCK NOTIFY POLL BCOPY BDELETE BMOVE LINK UNLINK OPTIONS HEAD DELETE TRACE TRACK CONNECT SOURCE SUBSCRIBE UNSUBSCRIBE PROPFIND PROPPATCH BPROPFIND BPROPPATCH RPC_CONNECT PROXY_SUCCESS BITS_POST CCM_POST SMS_POST RPC_IN_DATA RPC_OUT_DATA RPC_ECHO_DATA } \
@@ -108,14 +100,11 @@ multi_slash no \
 utf_8 no \
 u_encode yes \
 webroot no
-
-# ONC-RPC normalization and anomaly detection. 
+ 
 preprocessor rpc_decode: 111 32770 32771 32772 32773 32774 32775 32776 32777 32778 32779 no_alert_multiple_requests no_alert_large_fragments no_alert_incomplete
 
-# Back Orifice detection.
 preprocessor bo
 
-# FTP / Telnet normalization and anomaly detection. For more information, see README.ftptelnet
 preprocessor ftp_telnet: global inspection_type stateful encrypted_traffic no
 preprocessor ftp_telnet_protocol: telnet \
 ayt_attack_thresh 20 \
@@ -162,8 +151,7 @@ preprocessor ftp_telnet_protocol: ftp client default \
 max_resp_len 256 \
 bounce yes \
 ignore_telnet_erase_cmds yes \
-telnet_cmds yes
-# SMTP normalization and anomaly detection. 
+telnet_cmds yes 
 preprocessor smtp: ports { 25 465 587 691 } \
 inspection_type stateful \
 b64_decode_depth 0 \
@@ -194,14 +182,6 @@ valid_cmds { STARTTLS TICK TIME TURN TURNME VERB VRFY X-ADAT X-DRCP X-ERCP X-EXC
 valid_cmds { X-EXPS X-LINK2STATE XADR XAUTH XCIR XEXCH50 XGEN XLICENSE XQUE XSTA XTRN XUSR } \
 xlink2state { enabled }
 
-# Portscan detection. 
-# preprocessor sfportscan: proto { all } memcap { 10000000 } sense_level { low }
-
-# ARP spoof detection. 
-# preprocessor arpspoof
-# preprocessor arpspoof_detect_host: 192.168.40.1 f0:0f:00:f0:0f:00
-
-# SSH anomaly detection. 
 preprocessor ssh: server_ports { 22 15507 } \
 autodetect \
 max_client_bytes 19600 \
@@ -210,31 +190,31 @@ max_server_version_len 100 \
 enable_respoverflow enable_ssh1crc32 \
 enable_srvoverflow enable_protomismatch
 
-# SMB / DCE-RPC normalization and anomaly detection. 
+
 preprocessor dcerpc2: memcap 102400, events [co ]
 preprocessor dcerpc2_server: default, policy WinXP, \
 detect [smb [139,445], tcp 135, udp 135, rpc-over-http-server 593], \
 autodetect [tcp 1025:, udp 1025:, rpc-over-http-server 1025:], \
 smb_max_chain 3, smb_invalid_shares [“C$”, “D$”, “ADMIN$”]
 
-# DNS anomaly detection. 
+ 
 preprocessor dns: ports { 53 } enable_rdata_overflow
 
-# SSL anomaly detection and traffic bypass. 
+ 
 preprocessor ssl: ports { 443 465 563 636 989 992 993 994 995 7801 7802 7900 7901 7902 7903 7904 7905 7906 7907 7908 7909 7910 7911 7912 7913 7914 7915 7916 7917 7918 7919 7920 }, trustservers, noinspect_encrypted
 
-# SDF sensitive data preprocessor. 
+
 preprocessor sensitive_data: alert_threshold 25
 
-# Modbus preprocessor. 
+ 
 preprocessor modbus: ports { 502 }
 
-# DNP3 preprocessor. 
+ 
 preprocessor dnp3: ports { 20000 } \
 memcap 262144 \
 check_crc
 
-# Reputation preprocessor. 
+ 
 preprocessor reputation: \
 memcap 500, \
 priority whitelist, \
@@ -242,13 +222,13 @@ nested_ip inner, \
 whitelist $WHITE_LIST_PATH/white_list.rules, \
 blacklist $BLACK_LIST_PATH/black_list.rules
 
-# Step #6: Configure output plugins
+
 include classification.config
 include reference.config
 
-# Step #7: Customize your rule set
+
 include $RULE_PATH/local.rules
-# Minimal rules for home NIDS (6 files)
+
 include $RULE_PATH/attack-responses.rules
 include $RULE_PATH/backdoor.rules
 include $RULE_PATH/botnet-cnc.rules
@@ -256,7 +236,6 @@ include $RULE_PATH/spyware-put.rules
 include $RULE_PATH/virus.rules
 include $RULE_PATH/web-client.rules
 
-# Additional rules (15 files)
 include $RULE_PATH/bad-traffic.rules
 include $RULE_PATH/ddos.rules
 include $RULE_PATH/dns.rules
@@ -275,93 +254,20 @@ include $RULE_PATH/telnet.rules
 
 
 
-# Other disabled files : Suit yourself
-#include $RULE_PATH/blacklist.rules
-#include $RULE_PATH/pop3.rules
-#include $RULE_PATH/rservices.rules
-#include $RULE_PATH/scada.rules
-#include $RULE_PATH/snmp.rules
-#include $RULE_PATH/sql.rules
-#include $RULE_PATH/tftp.rules
-#include $RULE_PATH/voip.rules
-#include $RULE_PATH/web-activex.rules
-#include $RULE_PATH/web-attacks.rules
-#include $RULE_PATH/web-cgi.rules
-#include $RULE_PATH/web-coldfusion.rules
-#include $RULE_PATH/web-frontpage.rules
-#include $RULE_PATH/web-iis.rules
-#include $RULE_PATH/web-misc.rules
-#include $RULE_PATH/web-php.rules
-#include $RULE_PATH/x11.rules
+include threshold.conf
 
-# Step #8: Customize your preprocessor and decoder alerts
-
-# decoder and preprocessor event rules
-# include $PREPROC_RULE_PATH/preprocessor.rules
-# include $PREPROC_RULE_PATH/decoder.rules
-# include $PREPROC_RULE_PATH/sensitive-data.rules
-
-# Step #9: Customize your Shared Object Snort Rules
-
-# dynamic library rules
-# include $SO_RULE_PATH/bad-traffic.rules
-# include $SO_RULE_PATH/chat.rules
-# include $SO_RULE_PATH/dos.rules
-# include $SO_RULE_PATH/exploit.rules
-# include $SO_RULE_PATH/icmp.rules
-# include $SO_RULE_PATH/imap.rules
-# include $SO_RULE_PATH/misc.rules
-# include $SO_RULE_PATH/multimedia.rules
-# include $SO_RULE_PATH/netbios.rules
-# include $SO_RULE_PATH/nntp.rules
-# include $SO_RULE_PATH/p2p.rules
-# include $SO_RULE_PATH/smtp.rules
-# include $SO_RULE_PATH/snmp.rules
-# include $SO_RULE_PATH/specific-threats.rules
-# include $SO_RULE_PATH/web-activex.rules
-# include $SO_RULE_PATH/web-client.rules
-# include $SO_RULE_PATH/web-iis.rules
-# include $SO_RULE_PATH/web-misc.rules
-
-## Event thresholding or suppression commands. 
-iinclude threshold.conf
-
-#include $RULE_PATH/chat.rules
-#include $RULE_PATH/content-replace.rules
-#include $RULE_PATH/file-identify.rules
-#include $RULE_PATH/finger.rules
-#include $RULE_PATH/icmp.rules
-#include $RULE_PATH/icmp-info.rules
-#include $RULE_PATH/imap.rules
-#include $RULE_PATH/info.rules
-#include $RULE_PATH/misc.rules
-#include $RULE_PATH/multimedia.rules
-#include $RULE_PATH/mysql.rules
-#include $RULE_PATH/nntp.rules
-#include $RULE_PATH/oracle.rules
-#include $RULE_PATH/other-ids.rules
-#include $RULE_PATH/policy.rules
-#include $RULE_PATH/pop2.rules
-
-# to locate the snort.conf file.
 SNORT_CONF=”/etc/snort/snort.conf”
 
-# user account to run under.
 USER=”snort”
 
-# group account to run under.
 GROUP=”snort”
 
-# define the interface we listen on
 INTERFACE=”eth0″
 
-# delete the ‘-A fast’ option
 SNORT_OPTIONS=”-A fast -b -D -p”
 
-# add this at the end
 /swapfile.img none swap sw 0 0
 
-# add Snort at startup :
 DAEMONS=(!hwclock syslog-ng network @crond @sshd @openntpd dnsmasq snort)
 
 rule_url=https://www.snort.org/reg-rules/|snortrules-snapshot.tar.gz|
